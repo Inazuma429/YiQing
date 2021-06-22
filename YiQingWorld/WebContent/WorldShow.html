@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>查询日期</title>
+<script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
+<script src="js/echarts.js"></script>
+<script src="js/world.js"></script>
+</head>
+<body>
+<div style="text-align:center">
+日期:<input type="text" name="date" placeholder="输入格式:yyyy-mm-dd">
+<button onclick="search()">查询</button>
+</div>
+<div style="float:left;text-align:center">
+<table border="1" style="font-size:16px">
+	<thead class="head">
+	</thead>
+	<tbody class="main" style="display:block;overflow:auto;height:1000px"></tbody>
+</table>
+</div>
+<div id="charts" style="width:1050px;height:1000px;float:left;"></div>
+<script type="text/javascript">
+<!--写点击事件-->
+function search(){
+	date=$("input[name=date]").val();
+	<!--ajax传值主体，设置post，传值类型为json-->
+	$.ajax({
+		type:"post",
+		url:"WorldServlet",
+		datatype:"json",
+		data:{"date":date},
+		success:function(msg){
+			var json=JSON.parse(msg);
+			var mapdata=[];
+			var aconfirmed;
+			var adead;
+			var acured;
+			
+			function sortNumber(a,b){
+				return b.Confirmed-a.Confirmed;
+			}
+			json.sort(sortNumber);
+			size=json.length;
+			<!--这里进行了动态添加table表格-->
+			tr="<tr><th>总确诊人数 "+json[0].aconfirmed+"</th></tr>";
+			tr2="<tr><th>总死亡人数 "+json[0].adead+"</th></tr>";
+			tr3="<tr><th>总治愈人数 "+json[0].acured+"</th></tr>";
+			$('.head').append(tr);
+			$('.head2').append(tr2);
+			$('.head3').append(tr3);
+			for(i=0;i<size;i++){
+				$('.main').append("<tr></tr>");
+				$('.main2').append("<tr></tr>");
+				$('.main3').append("<tr></tr>");
+				mapdata.push({name:json[i].ECountry,value:json[i].Confirmed});
+			}
+			$('.main tr').each(function(i){
+				$(this).append("<td>"+json[i].Country+" <font color='red'>"+json[i].Confirmed+"</font></td>");
+			})
+			$('.main2 tr').each(function(i){
+				$(this).append("<td>"+json[i].Country+" <font color='red'>"+json[i].Dead+"</font></td>");
+			})
+			$('.main3 tr').each(function(i){
+				$(this).append("<td>"+json[i].Country+" <font color='red'>"+json[i].Cured+"</font></td>");
+			})
+			var mychart=echarts.init(document.getElementById('charts'));
+			var option={
+					backgroundColor:'#ccc',
+					title:{
+						text:'世界疫情数据显示'
+					},
+					tooltip:{
+						trigger:'item',
+						formatter:function(params){
+							index=params.dataIndex;
+							res="<p>"+params.name+"</p><p>中文名:"+json[index].Country
+							    +"</p><p>确诊人数:"+json[index].Confirmed
+							    +"</p><p>疑似人数:"+json[index].Yisi
+							    +"</p><p>治愈人数:"+json[index].Cured
+							    +"</p><p>死亡人数:"+json[index].Dead+"</p>";
+							return res;
+						}
+					},
+					visualMap:{
+						show:true,
+						x:'left',
+						y:'bottom',
+						splitList:[
+							{start:100000},
+							{start:50000,end:99999},
+							{start:10000,end:49999},
+							{start:1,end:9999},
+						],
+						color:['#930000','#EA0000','#ff7575','#F9F900']
+					},
+					series:[{
+						name:'确诊人数',
+						type:'map',
+						mapType:'world',
+						roam:false,
+						label:{
+							normal:{
+								show:true
+							},
+							emphasis:{
+								show:false
+							}
+						},
+						data:mapdata
+					}]
+			};
+			<!--调用-->
+			mychart.setOption(option);
+		},
+		error:function(){
+			alert("请求失败");
+		}
+	});
+}
+</script>
+<!--动态添加的表格格式  -->
+<div style="float:left;">
+<table border="1" style="font-size:16px">
+	<thead class="head2">
+	</thead>
+	<tbody class="main2" style="display:block;overflow:auto;height:1000px"></tbody>
+</table>
+</div>
+<div style="float:left;">
+<table border="1" style="font-size:16px">
+	<thead class="head3">
+	</thead>
+	<tbody class="main3" style="display:block;overflow:auto;height:1000px"></tbody>
+</table>
+</div>
+</body>
+</html>

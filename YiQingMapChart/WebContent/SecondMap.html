@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>第三阶段</title>
+<script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
+<script src="js/echarts.js"></script>
+<script type="text/javascript" src="js/china.js"></script>
+</head>
+<body>
+日期:<input type="text" name="date">
+<button onclick="search()">查询</button>
+<div id="charts" style="width:1000px;height:1000px"></div>
+<script type="text/javascript">
+function search(){
+	date=$("input[name=date]").val();
+	<!--这里是第一次请求，目的是显示第二阶段的中国地图全貌-->
+	$.ajax({
+		type:"post",
+		url:"ChartServlet",
+		datatype:"json",
+		data:{"date":date},
+		success:function(msg){
+			var json=JSON.parse(msg);
+			var mapdata=[];
+			var citydata=[];
+			size=json.length;
+			for(i=0;i<size;i++){
+				mapdata.push({name:json[i].Province,value:json[i].Confirmed});
+			}
+			var mychart=echarts.init(document.getElementById('charts'));
+			<!--这里注册省份的地图，需要事先引入相应的json文件-->
+			var ThePro={
+				'安徽':'mapjson/anhui.json',
+				'北京':'mapjson/beijing.json',
+				'重庆':'mapjson/chongqing.json',
+				'福建':'mapjson/fujian.json',
+				'甘肃':'mapjson/gansu.json',
+				'广东':'mapjson/guangdong.json',
+				'广西':'mapjson/guangxi.json',
+				'桂州':'mapjson/guizhou.json',
+				'海南':'mapjson/hainan.json',
+				'河北':'mapjson/hebei.json',
+				'黑龙江':'mapjson/heilongjiang.json',
+				'河南':'mapjson/henan.json',
+				'香港':'mapjson/hongkong.json',
+				'湖北':'mapjson/hubei.json',
+				'湖南':'mapjson/hunan.json',
+				'江苏':'mapjson/jiangsu.json',
+				'江西':'mapjson/jiangxi.json',
+				'吉林':'mapjson/jilin.json',
+				'辽宁':'mapjson/liaoning.json',
+				'澳门':'mapjson/macau.json',
+				'内蒙古':'mapjson/neimenggu.json',
+				'宁夏':'mapjson/ningxia.json',
+				'青海':'mapjson/qinghai.json',
+				'山西':'mapjson/shan1xi.json',
+				'陕西':'mapjson/shan3xi.json',
+				'山东':'mapjson/shandong.json',
+				'上海':'mapjson/shanghai.json',
+				'四川':'mapjson/sichuan.json',
+				'台湾':'mapjson/taiwan.json',
+				'新疆':'mapjson/xinjiang.json',
+				'西藏':'mapjson/xizang.json',
+				'云南':'mapjson/yunnan.json',
+				'浙江':'mapjson/zhejiang.json'
+			};
+			<!--中国地图全貌的设置，与第二阶段一样-->
+			var option={
+					backgroundColor:'#ccc',
+					title:{
+						text:'各省疫情当日确诊人数情况'
+					},
+					tooltip:{
+						trigger:'item',
+						formatter:function(params){
+							index=params.dataIndex;
+							res="<p>"+params.name+"</p><p>确诊人数:"+json[index].Confirmed
+								+"</p><p>疑似人数:"+json[index].Yisi
+								+"</p><p>治愈人数:"+json[index].Cured
+								+"</p><p>死亡人数:"+json[index].Dead+"</p>";
+							return res;
+						}
+					},
+					visualMap:{
+						show:true,
+						x:'left',
+						y:'bottom',
+						splitList:[
+							{start:10000},
+							{start:5000,end:9999},
+							{start:1000,end:4999},
+							{start:1,end:999},
+						],
+						color:['#930000','#EA0000','#ff7575','#F9F900']
+					},
+					series:[{
+						name:'确诊人数',
+						type:'map',
+						mapType:'china',
+						roam:false,
+						label:{
+							normal:{
+								show:true
+							},
+							emphasis:{
+								show:false
+							}
+						},
+						data:mapdata
+					}],
+			};
+			<!--增加点击事件-->
+			mychart.setOption(option,false);
+			mychart.on("click",chartClick);
+			function chartClick(param){
+				<!--点击时获取所点击的省份名称-->
+				mychart.setOption(option,false);
+				var selectedPro=param.name;
+				if(!ThePro[selectedPro]){
+					option.series.splice(1);
+					option.legend=null;
+					option.visualMap=null;
+					mychart.setOption(option,true);
+					return;
+				}
+				<!--第二次ajax请求，注意url的改变-->
+				$.ajax({
+					type:"post",
+					url:"CityServlet",
+					datatype:"json",
+					data:{"dateC":date},
+					success:function(msgC){
+						console.log(msgC);
+						var jsonC=JSON.parse(msgC);
+						var citydata=[];
+						sizeC=jsonC.length;
+						for(j=0;j<sizeC;j++){
+							citydata.push({name:jsonC[j].City,value:jsonC[j].CityConfirmed});
+						}
+						<!--根据点击省份的名称获取该省份的地图，随后进行相关界定-->
+						$.get(ThePro[selectedPro],function(geojson){
+							echarts.registerMap(selectedPro,geojson);
+							option={
+									backgroundColor:'#ccc',
+									title:{
+										text:'河北省确诊人数情况'
+									},
+									tooltip:{
+										trigger:'item',
+									},
+									<!--这里染色标准进行了改动，因为省内的确诊人数量级不同-->
+									visualMap:{
+										show:true,
+										x:'left',
+										y:'bottom',
+										splitList:[
+											{start:10},
+											{start:7,end:9},
+											{start:4,end:6},
+											{start:1,end:3},
+										],
+										color:['#930000','#EA0000','#ff7575','#F9F900']
+									},
+									<!--注意mapType，这里selectedPro实际就是省份名称，String格式-->
+									series:[{
+										name:'确诊人数',
+										type:'map',
+										mapType:selectedPro,
+										roam:false,
+										label:{
+											normal:{
+												show:true
+											},
+											emphasis:{
+												show:false
+											}
+										},
+										data:citydata
+									}],
+							};
+							mychart.setOption(option,true);
+						})
+					},
+					error:function(){
+						alert("请求失败");
+					}
+				});
+			}
+		},
+		error:function(){
+			alert("请求失败");
+		}
+	});
+	
+}
+</script>
+</body>
+</html>

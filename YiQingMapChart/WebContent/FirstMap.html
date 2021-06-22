@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>第二阶段</title>
+<script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
+<script src="js/echarts.js"></script>
+<script type="text/javascript" src="js/china.js"></script>
+</head>
+<body>
+日期:<input type="text" name="date">
+<button onclick="search()">查询</button>
+<div id="charts" style="width:1000px;height:1000px"></div>
+<script type="text/javascript">
+function search(){
+	date=$("input[name=date]").val();
+	$.ajax({
+		type:"post",
+		url:"ChartServlet",
+		datatype:"json",
+		data:{"date":date},
+		success:function(msg){
+			var json=JSON.parse(msg);
+			var mapdata=[];
+			size=json.length;
+			<!--json数组数据写在mapdata里，最后赋给地图，value定义的是确诊人数数据，这也是染色参考标准-->
+			for(i=0;i<size;i++){
+				mapdata.push({name:json[i].Province,value:json[i].Confirmed});
+			}
+			var mychart=echarts.init(document.getElementById('charts'));
+			<!--中国地图已经引入，这里编写其他信息-->
+			var option={
+					backgroundColor:'#ccc',
+					title:{
+						text:'各省疫情当日确诊人数情况'
+					},
+					<!--重写悬浮提示框，这样在鼠标指到某省时会显示更多详细数据-->
+					tooltip:{
+						trigger:'item',
+						formatter:function(params){
+							<!--由于写入mapdata时是按顺序写的，因此获取到下标后对应的json数组下标是一致的，直接显示其他数据即可-->
+							index=params.dataIndex;
+							res="<p>"+params.name+"</p><p>确诊人数:"+json[index].Confirmed
+								+"</p><p>疑似人数:"+json[index].Yisi
+								+"</p><p>治愈人数:"+json[index].Cured
+								+"</p><p>死亡人数:"+json[index].Dead+"</p>";
+							return res;
+						}
+					},
+					<!--定义染色，以及染色参考数据，这里是依次对应的-->
+					visualMap:{
+						show:true,
+						x:'left',
+						y:'bottom',
+						splitList:[
+							{start:10000},
+							{start:5000,end:9999},
+							{start:1000,end:4999},
+							{start:1,end:999},
+						],
+						color:['#930000','#EA0000','#ff7575','#F9F900']
+					},
+					series:[{
+						name:'确诊人数',
+						type:'map',
+						mapType:'china',
+						roam:false,
+						label:{
+							normal:{
+								show:true
+							},
+							emphasis:{
+								show:false
+							}
+						},
+						<!--data赋值mapdata-->
+						data:mapdata
+					}]
+			};
+			
+			mychart.setOption(option);
+		},
+		error:function(){
+			alert("请求失败");
+		}
+	});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>查询日期</title>
+<script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
+<script src="js/echarts.js"></script>
+</head>
+<body>
+日期:<input type="text" name="date">
+<button onclick="search()">查询</button>
+<!--引用引入的echarts文件，这里我作了两个图，因此声明两个div  -->
+<div id="charts" style="width:1000px;height:800px;float:left"></div>
+<div id="charts2" style="width:1000px;height:800px;float:left"></div>
+<script type="text/javascript">
+<!--写点击事件-->
+function search(){
+	date=$("input[name=date]").val();
+	<!--ajax传值主体，设置post，传值类型为json-->
+	$.ajax({
+		type:"post",
+		url:"ChartServlet",
+		datatype:"json",
+		data:{"date":date},
+		success:function(msg){
+			var json=JSON.parse(msg);
+			var province=[];
+			var confirmed=[];
+			size=json.length;
+			<!--这里进行了动态添加table表格-->
+			tr="<tr><th>省份</th><th>确诊人数</th><th>治愈人数</th><th>死亡人数</th></tr>";
+			$('.head').append(tr);
+			for(i=0;i<size;i++){
+				$('.main').append("<tr></tr>");
+				province.push(json[i].Province);
+				confirmed.push(json[i].Confirmed);
+			}
+			$('.main tr').each(function(i){
+				$(this).append("<td>"+json[i].Province+"</td>");
+				$(this).append("<td>"+json[i].Confirmed+"</td>");
+				$(this).append("<td>"+json[i].Cured+"</td>");
+				$(this).append("<td>"+json[i].Dead+"</td>");
+			})
+			
+			var mychart=echarts.init(document.getElementById('charts'));
+			var mychart2=echarts.init(document.getElementById('charts2'));
+			<!--定义柱状图的格式-->
+			var option={
+					title:{
+						text:'各省疫情当日确诊人数情况'
+					},
+					tooltip:{},
+					legend:{
+						data:['确诊人数']
+					},
+					xAxis:{
+						axisLabel:{interval:0,rotate:30},
+						data:province
+					},
+					yAxis:{},
+					series:[{
+						name:'确诊人数',
+						type:'bar',
+						data:confirmed
+					}]
+			};
+			<!--定义折线图的格式-->
+			var option2={
+					title:{
+						text:'各省疫情当日确诊人数情况'
+					},
+					tooltip:{},
+					legend:{
+						data:['确诊人数']
+					},
+					xAxis:{
+						axisLabel:{interval:0,rotate:30},
+						data:province
+					},
+					yAxis:{},
+					series:[{
+						name:'确诊人数',
+						type:'line',
+						data:confirmed
+					}]
+			};
+			<!--调用-->
+			mychart.setOption(option);
+			mychart2.setOption(option2);
+		},
+		error:function(){
+			alert("请求失败");
+		}
+	});
+}
+</script>
+<!--动态添加的表格格式  -->
+<table border="2">
+	<thead class="head">
+	</thead>
+	<tbody class="main"></tbody>
+</table>
+</body>
+</html>
